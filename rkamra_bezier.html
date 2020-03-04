@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Bezier demo -- rkamra</title>
+    <script src="https://d3js.org/d3.v5.js"></script>
+    <style>
+        .heading, .body-form{
+            text-align: center;
+            margin-left: 150px;
+            margin-right: 150px;
+        }
+        .container{
+            margin-top: 10px;
+            margin-left: 130px;
+        }
+
+        body{
+            background-color: #DEEFDE;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="heading">
+        <h2>Bezier Curves</h2><hr>
+        <h3>Rikesh Kamra: rkamra</h3><br>
+    </div>
+    <div class="container" >
+                <h4 style="margin-left: 130px;">Linear<span style="padding-left: 240px;"></span> Quadratic<span style="padding-left: 240px;"></span> Cubic<span style="padding-left: 260px;"></span> Quartic</h4>
+                <!-- <h4> Quadratic</h4> -->
+                <svg id="linear">
+                    <path id="linearpath"></path>
+                </svg>
+                <!-- <h4 style="">Quadratic</h4> -->
+                <svg id="quadratic">
+                    <path id="quadraticpath"></path>
+                    <path id="quadratic_control_path"></path>
+                </svg>
+                <svg id="cubic">
+                    <path id="cubicpath"></path>
+                    <path id="cubic_control_path"></path>
+                </svg>
+                <svg id="quartic">
+                    <path id="quarticpath"></path>
+                    <path id="quartic_control_path"></path>
+                </svg>
+    </div>
+    <div class="body-form">
+                <p>Number of points: <input min=1 max=100 value=15 type="range" id="slider_range"></p>
+                <button onclick="location.reload()" id="reset">Reset Position of Control Points</button><br><br>
+                <form>
+                    <input type="radio" id="comp" name="type" value="Complete" onclick="radioFunction(this.value)"> Complete<br>    
+                    <input type="radio" id="prog" name="type" value="Progress" onclick="radioFunction(this.value)" checked> In-progress<br>
+                </form> <br>
+            </div>       
+    <script>
+        circle_data = [{radius:5, cx: 50, cy:225,no:0},{radius:5, cx:140, cy:45,no:1}, {radius:5, cx:180, cy:150,no:2},{radius:5, cx:282, cy:260,no:3}, {radius:5,cx:270, cy:80,no:4}];
+        svg_linear = d3.select("#linear").attr("width", 300).attr("height", 300).style("background", "#D19A9A");
+        svg_quad = d3.select("#quadratic").attr("width", 300).attr("height", 300).style("background", "#A6B022");
+        svg_cubic = d3.select("#cubic").attr("width", 300).attr("height", 300).style("background", "#50F3A6");
+        svg_quartic = d3.select("#quartic").attr("width", 300).attr("height", 300).style("background", "#9D9F9D");
+        
+        var types = ['linear','quadratic','cubic','quartic'];
+        var j,chck,temp_j,mode;
+        for(j=0;j<4;j++){
+            var updates = 'update_'+types[j];
+            var svg_name = 'svg_'+types[j];
+            updates = d3.select("#"+types[j]).selectAll('g')
+					.data(circle_data)
+					.enter().append("g")						  
+					.call(d3.drag()
+					.on("start", dragstarted)
+					.on("drag", dragged)
+					.on("end", dragended));
+
+            updates.append("circle")
+	        		.attr("id", function(d, i) { return "c["+j+"]["+i+"]";})
+					.attr("r", function(d, i){
+					return d.radius;})
+		    		.attr("cx", function(d, i){
+					return d.cx;})
+					.attr("cy", function(d, i){return d.cy;});
+                    
+            updates.append("text")
+                    .attr("id",function(d,i){ return "text_"+i;})
+					.attr("x", function(d) { return d.cx; })
+					.attr("y", function(d) { return d.cy; })
+					.attr("text-anchor", "start")
+					.style("fill", "black")
+					.text(function(d,i) {
+					return "P"+i;});
+ 
+            updates.selectAll('circle').filter((d,i)=> d.no > (j+1)).remove();   
+            updates.selectAll('text').filter((d,i)=> d.no > (j+1)).remove();
+        }
+        draw_line();
+        function draw_line() {
+            d3.selectAll("line").remove();
+            for(k=1;k<4;k++){
+                var updates = 'update_'+types[k];
+                updates = d3.select("#"+types[k]);
+                for(chck=0;chck<=(k);chck++){
+                updates.append("line")
+                .attr("x1",document.getElementById("c["+k+"]["+chck+"]").getAttribute("cx"))
+                .attr("y1",document.getElementById("c["+k+"]["+chck+"]").getAttribute("cy"))
+                .attr("x2",document.getElementById("c["+k+"]["+(chck+1)+"]").getAttribute("cx"))
+                .attr("y2",document.getElementById("c["+k+"]["+(chck+1)+"]").getAttribute("cy"))
+                .style("stroke","red");
+                }
+            }
+        }
+        generate_bezier_curve();
+        function radioFunction(radio_val){
+            // console.log(radio_val);
+            if(radio_val == "Complete"){
+                mode="cmp";
+                generate_bezier_curve();
+            }
+            else if(radio_val == "Progress"){
+                mode="prg";
+                generate_bezier_curve();
+            }
+        }
+
+        function generate_bezier_curve() {
+           delete_circle();
+			var slide_val = document.getElementById("slider_range").value;
+
+            
+            var x1= document.getElementById("c[0][0]").getAttribute("cx");
+			var x2= document.getElementById("c[0][1]").getAttribute("cx");
+			var y1= document.getElementById("c[0][0]").getAttribute("cy");
+			var y2= document.getElementById("c[0][1]").getAttribute("cy");
+
+            var xx1= document.getElementById("c[1][0]").getAttribute("cx");
+			var xx2= document.getElementById("c[1][1]").getAttribute("cx");
+			var yy1= document.getElementById("c[1][0]").getAttribute("cy");
+			var yy2= document.getElementById("c[1][1]").getAttribute("cy");
+            var xx3= document.getElementById("c[1][2]").getAttribute("cx");
+			var yy3= document.getElementById("c[1][2]").getAttribute("cy");
+			
+            var bx1= document.getElementById("c[2][0]").getAttribute("cx");
+			var bx2= document.getElementById("c[2][1]").getAttribute("cx");
+			var by1= document.getElementById("c[2][0]").getAttribute("cy");
+			var by2= document.getElementById("c[2][1]").getAttribute("cy");
+            var bx3= document.getElementById("c[2][2]").getAttribute("cx");
+			var bx4= document.getElementById("c[2][3]").getAttribute("cx");
+			var by3= document.getElementById("c[2][2]").getAttribute("cy");
+			var by4= document.getElementById("c[2][3]").getAttribute("cy");
+            
+            var bbx1= document.getElementById("c[3][0]").getAttribute("cx");
+			var bbx2= document.getElementById("c[3][1]").getAttribute("cx");
+			var bby1= document.getElementById("c[3][0]").getAttribute("cy");
+			var bby2= document.getElementById("c[3][1]").getAttribute("cy");
+            var bbx3= document.getElementById("c[3][2]").getAttribute("cx");
+			var bbx4= document.getElementById("c[3][3]").getAttribute("cx");
+			var bby3= document.getElementById("c[3][2]").getAttribute("cy");
+			var bby4= document.getElementById("c[3][3]").getAttribute("cy");
+            var bbx5= document.getElementById("c[3][4]").getAttribute("cx");
+			var bby5= document.getElementById("c[3][4]").getAttribute("cy");
+
+			console.log("in t val check");
+			for (var i =0;i<slide_val;i++){
+             
+                if (mode == "cmp"){
+			         var t=(1/slide_val)*i;
+                    var t1=(1/slide_val)*(i+1);
+                }
+                else {
+                    var t=(1/100)*i;
+                    var t1=(1/100)*(i+1);
+
+                }        
+           
+            d3.select("#linear").append("circle")
+			.attr("cx",(1-t)*x1 + x2*t)
+			.attr("r",1)
+			.attr("cy",(1-t)*y1 + y2*t)
+			.attr("id",types[0]+"_"+i);
+
+            
+            d3.select("#quadratic").append("circle")
+            .attr("cx",Math.pow(1-t,2)*xx1+2*t*((1-t))*xx2+Math.pow(t,2)*xx3)
+            .attr("r",1)
+            .attr("cy",Math.pow(1-t,2)*yy1+2*t*((1-t))*yy2+Math.pow(t,2)*yy3)
+            .attr("id",types[1]+"_"+i);
+
+
+            d3.select("#cubic").append("circle")
+            .attr("cx",Math.pow(1-t,3)*bx1+3*t*Math.pow((1-t),2)*bx2+3*Math.pow(t,2)*(1-t)*bx3+Math.pow(t,3)*bx4)
+            .attr("r",1)
+            .attr("cy",Math.pow(1-t,3)*by1+3*t*Math.pow((1-t),2)*by2+3*Math.pow(t,2)*(1-t)*by3+Math.pow(t,3)*by4)
+            .attr("id",types[2]+"_"+i);
+
+            d3.select("#quartic").append("circle")
+            .attr("cx",Math.pow((1-t),4)*bbx1+4*t*Math.pow((1-t),3)*bbx2+6*Math.pow(t,2)*Math.pow((1-t),2)*bbx3+4*(1-t)*Math.pow(t,3)*bbx4+Math.pow(t,4)*bbx5)
+            .attr("r",1)
+            .attr("cy",Math.pow((1-t),4)*bby1+4*t*Math.pow((1-t),3)*bby2+6*Math.pow(t,2)*Math.pow((1-t),2)*bby3+4*(1-t)*Math.pow(t,3)*bby4+Math.pow(t,4)*bby5)
+            .attr("id",types[3]+"_"+i)
+            .style("fill","white");
+			
+
+            if (mode == "cmp"){
+                d3.select("#linear").append("line")
+                .attr("x1", (1-t)*x1 + x2*t)
+                .attr("y1", (1-t)*y1 + y2*t)
+                .attr("x2", (1-t1)*x1 + x2*t1)
+                .attr("y2", (1-t1)*y1 + y2*t1) 
+                .attr("id",types[0]+"_"+i+"_line")
+                .style("stroke", "black");
+                
+               d3.select("#quadratic").append("line")
+                .attr("x1", Math.pow(1-t,2)*xx1+2*t*((1-t))*xx2+Math.pow(t,2)*xx3)
+                .attr("y1", Math.pow(1-t,2)*yy1+2*t*((1-t))*yy2+Math.pow(t,2)*yy3)
+                .attr("x2", Math.pow(1-t1,2)*xx1+2*t1*((1-t1))*xx2+Math.pow(t1,2)*xx3)
+                .attr("y2", Math.pow(1-t1,2)*yy1+2*t1*((1-t1))*yy2+Math.pow(t1,2)*yy3)
+                .attr("id",types[1]+"_"+i+"_line") 
+                .style("stroke", "black");
+
+                d3.select("#cubic").append("line")
+                .attr("x1", Math.pow(1-t,3)*bx1+3*t*Math.pow((1-t),2)*bx2+3*Math.pow(t,2)*(1-t)*bx3+Math.pow(t,3)*bx4)
+                .attr("y1", Math.pow(1-t,3)*by1+3*t*Math.pow((1-t),2)*by2+3*Math.pow(t,2)*(1-t)*by3+Math.pow(t,3)*by4)
+                .attr("x2", Math.pow(1-t1,3)*bx1+3*t1*Math.pow((1-t1),2)*bx2+3*Math.pow(t1,2)*(1-t1)*bx3+Math.pow(t1,3)*bx4)
+                .attr("y2", Math.pow(1-t1,3)*by1+3*t1*Math.pow((1-t1),2)*by2+3*Math.pow(t1,2)*(1-t1)*by3+Math.pow(t1,3)*by4) 
+                .attr("id",types[2]+"_"+i+"_line")
+                .style("stroke", "black");
+
+                d3.select("#quartic").append("line")
+                .attr("x1", Math.pow((1-t),4)*bbx1+4*t*Math.pow((1-t),3)*bbx2+6*Math.pow(t,2)*Math.pow((1-t),2)*bbx3+4*(1-t)*Math.pow(t,3)*bbx4+Math.pow(t,4)*bbx5)
+                .attr("y1", Math.pow((1-t),4)*bby1+4*t*Math.pow((1-t),3)*bby2+6*Math.pow(t,2)*Math.pow((1-t),2)*bby3+4*(1-t)*Math.pow(t,3)*bby4+Math.pow(t,4)*bby5)
+                .attr("x2", Math.pow((1-t1),4)*bbx1+4*t1*Math.pow((1-t1),3)*bbx2+6*Math.pow(t1,2)*Math.pow((1-t1),2)*bbx3+4*(1-t1)*Math.pow(t1,3)*bbx4+Math.pow(t1,4)*bbx5)
+                .attr("y2", Math.pow((1-t1),4)*bby1+4*t1*Math.pow((1-t1),3)*bby2+6*Math.pow(t1,2)*Math.pow((1-t1),2)*bby3+4*(1-t1)*Math.pow(t1,3)*bby4+Math.pow(t1,4)*bby5) 
+                .attr("id",types[3]+"_"+i+"_line")
+                .style("stroke", "black");
+            }
+				
+			}
+		}
+		function delete_circle(){
+			for(var i=0;i<4;i++){
+                for (var j=0;j<100;j++){
+        			d3.select("#"+types[i]+"_"+j).remove();
+                    d3.select("#"+types[i]+"_"+j+"_line").remove();
+                }
+        	}
+		}
+
+        function dragstarted(d) {
+			d3.select(this).raise().classed("active", true);
+		}
+
+		function dragged(d) {
+			d3.select(this).select("text")
+			.attr("x", d.x = d3.event.x)
+			.attr("y", d.y = d3.event.y);
+			d3.select(this).select("circle")
+			.attr("cx", d.x = d3.event.x)
+			.attr("cy", d.y = d3.event.y);
+            draw_line();
+			generate_bezier_curve();
+		}
+
+		function dragended(d) {
+		  d3.select(this).classed("active", false);
+		}
+
+        d3.select("#slider_range").on("input", generate_bezier_curve)
+        
+    </script>
+    <br>
+</body>
+
+</html>
+
+
+<!-- asia 12065 -->
+<!-- americas 7575 -->
+<!-- africa 11610 -->
+<!-- europe 9680 -->
